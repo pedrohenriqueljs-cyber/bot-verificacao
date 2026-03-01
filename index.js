@@ -32,7 +32,7 @@ process.on("uncaughtException", (err) => {
 });
 
 /* =========================
-   Validações
+   Validações
 ========================= */
 if (!process.env.DISCORD_TOKEN) {
   console.error("❌ DISCORD_TOKEN não configurado (Render > Environment).");
@@ -152,7 +152,11 @@ async function getStaffLogChannel() {
 async function logStaff(title, description, color = 0x2b2d31) {
   const ch = await getStaffLogChannel();
   if (!ch) return;
-  const embed = new EmbedBuilder().setTitle(title).setDescription(description).setColor(color).setTimestamp();
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setDescription(description)
+    .setColor(color)
+    .setTimestamp();
   try {
     await ch.send({ embeds: [embed] });
   } catch (e) {
@@ -233,7 +237,10 @@ function extractTargetUserId(message, arg) {
 ========================= */
 function buildVerifyMessage() {
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(VERIFY_BUTTON_ID).setLabel("✅ Verificar").setStyle(ButtonStyle.Success)
+    new ButtonBuilder()
+      .setCustomId(VERIFY_BUTTON_ID)
+      .setLabel("✅ Verificar")
+      .setStyle(ButtonStyle.Success)
   );
 
   return {
@@ -318,10 +325,6 @@ client.on("guildMemberRemove", async (member) => {
 
 /* =========================
    Comandos no chat
-   - !setup-verificacao (Community)
-   - !setup-membro (Community e Loja)
-   - !permissao @user|id (SOMENTE DONO)
-   - !delpermissao @user|id (SOMENTE DONO)
 ========================= */
 client.on("messageCreate", async (message) => {
   try {
@@ -413,7 +416,6 @@ client.on("messageCreate", async (message) => {
       db.reactionRoles[guildId] = { messageId: sent.id, channelId: message.channel.id };
       saveDB(db);
 
-      // sem log de emoji
       await message.delete().catch(() => {});
       return;
     }
@@ -479,7 +481,9 @@ client.on("interactionCreate", async (interaction) => {
       0x57f287
     );
 
-    return interaction.editReply(res.changed ? "✅ Cargo **Free Access** liberado!" : "✅ Você já tem o cargo **Free Access**.");
+    return interaction.editReply(
+      res.changed ? "✅ Cargo **Free Access** liberado!" : "✅ Você já tem o cargo **Free Access**."
+    );
   } catch (err) {
     console.error("Erro no interactionCreate:", err);
     if (interaction.deferred || interaction.replied) {
@@ -552,6 +556,8 @@ app.listen(PORT, () => {
 /* =========================
    Login Discord (com log)
 ========================= */
+console.log("DISCORD_TOKEN existe?", !!process.env.DISCORD_TOKEN);
+
 client
   .login(process.env.DISCORD_TOKEN)
   .then(() => console.log("✅ Login OK (token aceito)."))
