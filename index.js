@@ -1,6 +1,12 @@
+"use strict";
+
 require("dotenv").config();
+
 const fs = require("fs");
 const path = require("path");
+
+const express = require("express");
+const app = express();
 
 const {
   Client,
@@ -15,12 +21,25 @@ const {
 
 const config = require("./config");
 
+/* =========================
+   Logs de erro (pra não ficar “silencioso” no Render)
+========================= */
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ unhandledRejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("❌ uncaughtException:", err);
+});
+
+/* =========================
+   Validações
+========================= */
 if (!process.env.DISCORD_TOKEN) {
-  console.error("❌ DISCORD_TOKEN não configurado no .env");
+  console.error("❌ DISCORD_TOKEN não configurado (Render > Environment).");
   process.exit(1);
 }
 if (!Array.isArray(config.donos) || config.donos.length === 0) {
-  console.error("❌ Nenhum dono configurado no config.js");
+  console.error("❌ Nenhum dono configurado no config.js (config.donos).");
   process.exit(1);
 }
 
@@ -84,6 +103,9 @@ const client = new Client({
   ],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
+
+client.on("error", (e) => console.error("❌ Discord client error:", e));
+client.on("warn", (m) => console.warn("⚠️ Discord client warn:", m));
 
 /* =========================
    Cooldown (10s por usuário)
@@ -247,10 +269,14 @@ async function reactWithConfiguredEmoji(message) {
 client.once("ready", async () => {
   console.log(`🤖 Online como ${client.user.tag}`);
 
-  client.user.setPresence({
-    activities: [{ name: config.presenceText, type: ActivityType.Playing }],
-    status: "online",
-  });
+  try {
+    client.user.setPresence({
+      activities: [{ name: config.presenceText, type: ActivityType.Playing }],
+      status: "online",
+    });
+  } catch (e) {
+    console.error("⚠️ Erro setPresence:", e);
+  }
 
   await logStaff("✅ Bot online", `Presença: Jogando **${config.presenceText}**`, 0x57f287);
 });
@@ -387,7 +413,7 @@ client.on("messageCreate", async (message) => {
       db.reactionRoles[guildId] = { messageId: sent.id, channelId: message.channel.id };
       saveDB(db);
 
-      // sem log de emoji (como você pediu)
+      // sem log de emoji
       await message.delete().catch(() => {});
       return;
     }
@@ -398,8 +424,6 @@ client.on("messageCreate", async (message) => {
 
 /* =========================
    Botão Verificar (Community)
-   - Cooldown 10s
-   - Se já tem Free Access: responde diferente
 ========================= */
 client.on("interactionCreate", async (interaction) => {
   try {
@@ -412,7 +436,8 @@ client.on("interactionCreate", async (interaction) => {
 
     const userId = interaction.user.id;
 
-    const remaining = getCooldownRemainingMs(userId);
+    const last = verifyCooldown.get(userId);
+    const remaining = last ? VERIFY_COOLDOWN_MS - (Date.now() - last) : 0;
     if (remaining > 0) {
       const sec = Math.ceil(remaining / 1000);
       return interaction.reply({ content: `⏳ Aguarde **${sec}s** e tente novamente.`, ephemeral: true });
@@ -465,9 +490,6 @@ client.on("interactionCreate", async (interaction) => {
 
 /* =========================
    Reaction roles (Membro) - 2 servidores com DB
-   - Add: dá cargo
-   - Remove: tira cargo (sem aviso)
-   (SEM logs)
 ========================= */
 async function handleReactionChange({ reaction, user, isAdd }) {
   if (user.bot) return;
@@ -488,10 +510,14 @@ async function handleReactionChange({ reaction, user, isAdd }) {
   const roleId = getMemberRoleIdForGuild(guildId);
   if (!roleId) return;
 
-  if (isAdd) {
-    await addRole(guildId, user.id, roleId, "Reação: cargo Membro");
-  } else {
-    await removeRole(guildId, user.id, roleId, "Reação removida: cargo Membro");
+  try {
+    if (isAdd) {
+      await addRole(guildId, user.id, roleId, "Reação: cargo Membro");
+    } else {
+      await removeRole(guildId, user.id, roleId, "Reação removida: cargo Membro");
+    }
+  } catch (e) {
+    console.error("Erro handleReactionChange:", e);
   }
 }
 
@@ -511,11 +537,9 @@ client.on("messageReactionRemove", async (reaction, user) => {
   }
 });
 
-client.login(process.env.DISCORD_TOKEN);
-
-const express = require("express");
-const app = express();
-
+/* =========================
+   Express (porta pro Render Free)
+========================= */
 app.get("/", (req, res) => {
   res.send("Bot Kingz online 🔥");
 });
@@ -524,3 +548,13 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("Servidor web ativo na porta " + PORT);
 });
+
+/* =========================
+   Login Discord (com log)
+========================= */
+console.log("DISCORD_TOKEN existe?", !!process.env.DISCORD_TOKEN);
+
+client
+  .login(process.env.DISCORD_TOKEN)
+  .then(() => console.log("✅ Login OK (token aceito)."))
+  .catch((e) => console.error("❌ Login FALHOU:", e));
