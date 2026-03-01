@@ -1,7 +1,5 @@
 "use strict";
 
-require("dotenv").config();
-
 const fs = require("fs");
 const path = require("path");
 
@@ -562,3 +560,4 @@ client
   .login(process.env.DISCORD_TOKEN)
   .then(() => console.log("✅ Login OK (token aceito)."))
   .catch((e) => console.error("❌ Login FALHOU:", e));
+
