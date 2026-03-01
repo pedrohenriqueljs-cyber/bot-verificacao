@@ -552,8 +552,6 @@ app.listen(PORT, () => {
 /* =========================
    Login Discord (com log)
 ========================= */
-console.log("DISCORD_TOKEN existe?", !!process.env.DISCORD_TOKEN);
-
 client
   .login(process.env.DISCORD_TOKEN)
   .then(() => console.log("✅ Login OK (token aceito)."))
