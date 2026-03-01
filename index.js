@@ -554,10 +554,24 @@ app.listen(PORT, () => {
 /* =========================
    Login Discord (com log)
 ========================= */
-console.log("DISCORD_TOKEN existe?", !!process.env.DISCORD_TOKEN);
+console.log("DISCORD_TOKEN existe? true");
+
+const LOGIN_TIMEOUT_MS = 20000;
+
+const t = setTimeout(() => {
+  console.error("❌ Login travou (timeout).");
+  console.error("➡️ 1) Reseta o token e atualiza no Render");
+  console.error("➡️ 2) Força Node 20 no Render (.nvmrc)");
+}, LOGIN_TIMEOUT_MS);
 
 client
   .login(process.env.DISCORD_TOKEN)
-  .then(() => console.log("✅ Login OK (token aceito)."))
-  .catch((e) => console.error("❌ Login FALHOU:", e));
+  .then(() => {
+    clearTimeout(t);
+    console.log("✅ Login OK (token aceito).");
+  })
+  .catch((e) => {
+    clearTimeout(t);
+    console.error("❌ Login FALHOU:", e);
+  });
 
